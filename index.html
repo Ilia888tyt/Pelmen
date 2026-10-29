@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Пельмень Тайкун</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1b1033;--card:#2a1b4d;--cream:#fff3dc;--sun:#ff7a1a;--mint:#3ddbb0;--mute:#b8a9d9}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
+body{background:radial-gradient(circle at 50% 30%,#3a2370,var(--bg) 65%);color:#fff;font:500 16px/1.4 Rubik,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#app{height:100%;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0) 0 0}
+.view{flex:1;display:none;flex-direction:column;padding:12px 16px;overflow-y:auto;min-height:0}
+.view.on{display:flex}
+.coins{text-align:center;font-weight:800;font-size:44px;line-height:1.1}
+.coins small{display:block;font-size:14px;color:var(--mute);font-weight:500}
+.lvl{margin:8px auto 0;width:100%;max-width:340px}
+.lvl div{display:flex;justify-content:space-between;font-size:13px;color:var(--mute)}
+.bar{height:10px;background:#00000055;border-radius:9px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sun),#ffc14a);border-radius:9px}
+.bar.en i{background:linear-gradient(90deg,var(--mint),#7affd9)}
+.stats{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.pill{background:var(--card);border-radius:12px;padding:6px 12px;font-size:14px}
+.pill b{color:var(--mint)}
+.stage{flex:1;position:relative;display:grid;place-items:center;min-height:200px}
+#pel{width:min(72vw,300px);aspect-ratio:1;background:none;border:0;padding:0;cursor:pointer;transition:transform .08s;filter:drop-shadow(0 16px 24px #0008)}
+#pel:active,#pel.hit{transform:scale(.93) rotate(-2deg)}
+#pel svg{width:100%;height:100%;display:block;pointer-events:none}
+.fl{position:fixed;font-weight:800;font-size:26px;color:var(--cream);pointer-events:none;animation:up .8s ease-out forwards;text-shadow:0 2px 6px #000a}
+@keyframes up{to{transform:translateY(-90px);opacity:0}}
+.gold{position:absolute;width:76px;height:76px;border:0;background:none;padding:0;animation:pulse .7s infinite alternate;cursor:pointer}
+.gold svg{width:100%;height:100%;filter:drop-shadow(0 0 14px #ffd23f)}
+@keyframes pulse{to{transform:scale(1.15)}}
+.enrow{max-width:340px;width:100%;margin:0 auto 10px;font-size:13px;color:var(--mute);display:flex;justify-content:space-between}
+.tabs{display:flex;background:#0006;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));gap:4px}
+.tabs button{flex:1;background:none;border:0;color:var(--mute);font:500 12px Rubik,sans-serif;padding:8px 2px;border-radius:12px;min-height:50px;cursor:pointer}
+.tabs button span{display:block;font-size:20px}
+.tabs button[aria-selected="true"]{background:var(--card);color:#fff}
+h2{margin:6px 0 10px;font-size:20px}
+.it{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px;margin-bottom:8px}
+.it .ic{font-size:28px}.it .tx{flex:1;min-width:0}.it small{color:var(--mute);display:block}
+.buy{background:var(--sun);color:#2b1200;border:0;border-radius:12px;font:800 14px Rubik,sans-serif;padding:10px 12px;min-height:44px;cursor:pointer;white-space:nowrap}
+.buy:disabled{background:#4a3a73;color:#9a8cc0}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:8px 0 12px}
+.days div{background:var(--card);border-radius:10px;padding:8px 0;text-align:center;font-size:12px}
+.days div.d{background:var(--mint);color:#06281f}
+.btn{background:var(--sun);color:#2b1200;border:0;border-radius:16px;font:800 17px Rubik,sans-serif;padding:14px;min-height:54px;width:100%;cursor:pointer}
+.btn:disabled{background:#4a3a73;color:#9a8cc0}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);background:var(--mint);color:#06281f;font-weight:800;padding:10px 16px;border-radius:14px;z-index:9;max-width:90vw;text-align:center}
+:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.gold,.fl{animation:none}}
+</style>
+</head>
+<body>
+<div id="app">
+ <section class="view on" id="v-play">
+  <div class="coins"><span id="c">0</span><small>монет</small></div>
+  <div class="lvl"><div><span id="ln">Кухонный новичок</span><span id="lt"></span></div><div class="bar"><i id="lb"></i></div></div>
+  <div class="stats"><span class="pill">за тап <b id="pt">1</b></span><span class="pill">в час <b id="ph">0</b></span></div>
+  <div class="stage" id="stage">
+   <button id="pel" aria-label="Лепить пельмень">
+    <svg viewBox="0 0 200 170"><path d="M14 118C22 40 178 40 186 118C150 150 50 150 14 118Z" fill="#fff3dc" stroke="#e8c98f" stroke-width="5"/><path d="M40 70l6 22M70 54l4 28M100 50v30M130 54l-4 28M160 70l-6 22" stroke="#e8c98f" stroke-width="4" stroke-linecap="round"/><circle cx="76" cy="108" r="7" fill="#2b1a10"/><circle cx="124" cy="108" r="7" fill="#2b1a10"/><circle cx="64" cy="124" r="8" fill="#ffb3a1" opacity=".7"/><circle cx="136" cy="124" r="8" fill="#ffb3a1" opacity=".7"/><path d="M88 122Q100 134 112 122" fill="none" stroke="#2b1a10" stroke-width="5" stroke-linecap="round"/></svg>
+   </button>
+  </div>
+  <div class="enrow"><span>⚡ Энергия</span><span id="et"></span></div>
+  <div class="bar en" style="max-width:340px;width:100%;margin:-6px auto 8px"><i id="eb"></i></div>
+ </section>
+ <section class="view" id="v-shop"><h2>Цех</h2><div id="shop"></div></section>
+ <section class="view" id="v-bonus"><h2>Бонусы</h2>
+  <div class="days" id="days"></div>
+  <button class="btn" id="claim">Забрать награду дня</button>
+  <h2 style="margin-top:22px">Задания</h2>
+  <div class="it"><span class="ic">📣</span><div class="tx">Подписаться на канал<small>+5 000 монет, один раз</small></div><button class="buy" id="task">Выполнить</button></div>
+ </section>
+ <section class="view" id="v-friends"><h2>Друзья</h2>
+  <div class="it"><span class="ic">🥟</span><div class="tx">Зовите друзей лепить вместе<small>Чем больше друзей, тем больше вас в игре</small></div></div>
+  <button class="btn" id="share">Пригласить друга</button>
+ </section>
+ <nav class="tabs" role="tablist">
+  <button role="tab" data-v="play" aria-selected="true"><span>🥟</span>Лепить</button>
+  <button role="tab" data-v="shop" aria-selected="false"><span>🏭</span>Цех</button>
+  <button role="tab" data-v="bonus" aria-selected="false"><span>🎁</span>Бонусы</button>
+  <button role="tab" data-v="friends" aria-selected="false"><span>👥</span>Друзья</button>
+ </nav>
+</div>
+<script>
+(function(){
+  var tg=window.Telegram&&window.Telegram.WebApp;
+  if(tg){try{tg.ready();tg.expand();tg.disableVerticalSwipes&&tg.disableVerticalSwipes()}catch(e){}}
+  var BOT='YOUR_BOT', CHANNEL='https://t.me/your_channel', KEY='pel1';
+  var UP=[{id:'tap',i:'🪵',n:'Скалка',d:'+1 монета за тап',b:50},{id:'en',i:'🔥',n:'Тёплая печка',d:'+100 к запасу энергии',b:300},{id:'gr',i:'👵',n:'Бабушка',d:'+80 монет в час',b:200,v:80},{id:'sh',i:'🏭',n:'Цех',d:'+450 монет в час',b:1200,v:450},{id:'fr',i:'🏪',n:'Франшиза',d:'+2 500 монет в час',b:6000,v:2500}];
+  var LV=[['Кухонный новичок',0],['Повар',5e3],['Шеф',5e4],['Владелец пельменной',5e5],['Пельменный магнат',5e6],['Пельменный император',5e7]];
+  var S={c:0,e:500,l:{},dk:0,st:0,task:0,ts:Date.now()};
+  try{var o=JSON.parse(localStorage.getItem(KEY));if(o)S=Object.assign(S,o)}catch(e){}
+  function $(i){return document.getElementById(i)}
+  function fmt(n){n=Math.floor(n);if(n>=1e9)return (n/1e9).toFixed(2)+' млрд';if(n>=1e6)return (n/1e6).toFixed(2)+' млн';return n.toLocaleString('ru-RU')}
+  function per(){return 1+(S.l.tap||0)}
+  function maxE(){return 500+100*(S.l.en||0)}
+  function ph(){return UP.reduce(function(s,u){return s+(u.v?u.v*(S.l[u.id]||0):0)},0)}
+  function cost(u){return Math.round(u.b*Math.pow(1.55,S.l[u.id]||0))}
+  function toast(t){var d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(function(){d.remove()},2600)}
+  function save(){S.ts=Date.now();var j=JSON.stringify(S);try{localStorage.setItem(KEY,j)}catch(e){}try{tg&&tg.CloudStorage&&tg.CloudStorage.setItem(KEY,j)}catch(e){}}
+  try{tg&&tg.CloudStorage&&tg.CloudStorage.getItem(KEY,function(err,v){if(v){try{var o=JSON.parse(v);if(o.ts>S.ts){S=Object.assign(S,o);ui();shop()}}catch(e){}}})}catch(e){}
+  var away=Math.min(Date.now()-S.ts,3*36e5);
+  if(away>6e4&&ph()>0){var g=ph()*away/36e5;S.c+=g;setTimeout(function(){toast('Пока вас не было: +'+fmt(g)+' монет')},400)}
+  S.e=Math.min(maxE(),S.e+Math.floor(away/1000)*3);
+  function ui(){
+    $('c').textContent=fmt(S.c);$('pt').textContent=fmt(per());$('ph').textContent=fmt(ph());
+    var li=0;LV.forEach(function(x,i){if(S.c>=x[1])li=i});
+    var nx=LV[li+1];$('ln').textContent=LV[li][0];$('lt').textContent=nx?fmt(S.c)+' / '+fmt(nx[1]):'Максимум';
+    $('lb').style.width=(nx?Math.min(100,(S.c-LV[li][1])/(nx[1]-LV[li][1])*100):100)+'%';
+    $('eb').style.width=S.e/maxE()*100+'%';$('et').textContent=Math.floor(S.e)+' / '+maxE();
+  }
+  function shop(){
+    $('shop').innerHTML=UP.map(function(u){var c=cost(u);return '<div class="it"><span class="ic">'+u.i+'</span><div class="tx"><b>'+u.n+'</b> ур. '+(S.l[u.id]||0)+'<small>'+u.d+'</small></div><button class="buy" data-u="'+u.id+'"'+(S.c<c?' disabled':'')+'>'+fmt(c)+'</button></div>'}).join('');
+  }
+  function daily(){
+    var k=Math.floor(Date.now()/864e5),done=S.dk===k,st=done?S.st:(S.dk===k-1?S.st:0);
+    var h='';for(var i=1;i<=7;i++)h+='<div'+(i<=st&&(done||i<=st)?' class="d"':'')+'>День '+i+'<br>'+fmt(500*i)+'</div>';
+    $('days').innerHTML=h;$('claim').disabled=done;$('claim').textContent=done?'Награда получена, приходите завтра':'Забрать награду дня';
+  }
+  function hit(x,y){
+    var p=per();if(S.e<1){var b=$('eb').parentNode;b.animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:180});return}
+    S.e-=1;S.c+=p;ui();
+    var f=document.createElement('div');f.className='fl';f.textContent='+'+fmt(p);f.style.left=(x-14)+'px';f.style.top=(y-30)+'px';document.body.appendChild(f);setTimeout(function(){f.remove()},800);
+    try{tg&&tg.HapticFeedback&&tg.HapticFeedback.impactOccurred('light')}catch(e){}
+  }
+  $('pel').addEventListener('pointerdown',function(e){e.preventDefault();hit(e.clientX,e.clientY)});
+  document.querySelector('.tabs').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    document.querySelectorAll('.tabs button').forEach(function(t){t.setAttribute('aria-selected',t===b)});
+    document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('on',v.id==='v-'+b.dataset.v)});
+    if(b.dataset.v==='shop')shop();if(b.dataset.v==='bonus')daily();
+  });
+  $('shop').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    var u=UP.filter(function(x){return x.id===b.dataset.u})[0],c=cost(u);
+    if(S.c>=c){S.c-=c;S.l[u.id]=(S.l[u.id]||0)+1;ui();shop();save()}
+  });
+  $('claim').onclick=function(){
+    var k=Math.floor(Date.now()/864e5);if(S.dk===k)return;
+    S.st=S.dk===k-1?Math.min(7,S.st+1):1;S.dk=k;var r=500*S.st;S.c+=r;ui();daily();save();toast('Награда дня: +'+fmt(r));
+  };
+  $('task').onclick=function(){
+    if(tg&&tg.openTelegramLink)tg.openTelegramLink(CHANNEL);else window.open(CHANNEL,'_blank');
+    if(!S.task){S.task=1;setTimeout(function(){S.c+=5000;ui();save();toast('+5 000 монет за подписку')},4000)}
+  };
+  $('share').onclick=function(){
+    var uid=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user.id:'0',link='https://t.me/'+BOT+'?start=ref_'+uid;
+    if(tg&&tg.openTelegramLink)tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent('Лепи пельмени со мной и строй империю!'));
+    else{try{navigator.clipboard.writeText(link);toast('Ссылка скопирована')}catch(e){toast(link)}}
+  };
+  function gold(){
+    setTimeout(function(){
+      var st=$('stage'),b=document.createElement('button');b.className='gold';b.setAttribute('aria-label','Золотой пельмень');
+      b.innerHTML='<svg viewBox="0 0 200 170"><path d="M14 118C22 40 178 40 186 118C150 150 50 150 14 118Z" fill="#ffd23f" stroke="#ff9d00" stroke-width="7"/></svg>';
+      b.style.left=Math.random()*(st.clientWidth-80)+'px';b.style.top=Math.random()*(st.clientHeight-80)+'px';
+      b.onclick=function(){var r=Math.round(200*per()+ph()*.25);S.c+=r;S.e=maxE();ui();save();toast('Золотой пельмень! +'+fmt(r)+' и полная энергия');b.remove()};
+      st.appendChild(b);setTimeout(function(){b.remove()},7000);gold();
+    },40000+Math.random()*40000);
+  }
+  gold();
+  setInterval(function(){S.c+=ph()/3600;S.e=Math.min(maxE(),S.e+3);ui();if($('v-shop').classList.contains('on'))shop()},1000);
+  setInterval(save,5000);
+  document.addEventListener('visibilitychange',function(){if(document.hidden)save()});
+  ui();shop();daily();
+})();
+</script>
+</body>
+</html>
